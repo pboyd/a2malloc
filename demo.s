@@ -36,7 +36,6 @@ PrintLn	MAC
 * Allocator Configuration
 AllocPointer	EQU $40
 AllocStart	EQU $42
-AllocCount	EQU #$20
 
 Start	    
 	    LDA #$8D		; Print a newline
@@ -47,7 +46,7 @@ Start
 	    LDA #$60		    
 	    STA AllocStart+1
 
-	    JSR AllocInit
+	    AllocInit #$20
 
 	    AllocateAndFill #$8;#$8;[OutOfMemory
 	    AllocateAndFill #$7f;#$7f;[OutOfMemory

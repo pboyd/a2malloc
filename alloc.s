@@ -111,39 +111,39 @@ Success
 		CMP #0		; Clear ZF
 End		<<<
 
-* AllocInit initializes the free list.
+* AllocInit <PageCount>
 *
-* Requires the following to be defined:
-*   - AllocStart: Pointer to the first page to be managed.
-*		  The caller must initialize this.
-*   - AllocPointer: Zero-page pointer which can be overridden.
-*   - AllocCount: Number of pages dedicated to the allocator.
-AllocInit	LDA AllocStart
-		STA AllocPointer
-		LDA AllocStart+1
-		STA AllocPointer+1
+* Initializes the free list. Before define AllocStart and AllocPointer.
+* AllocStart must point to the beginning of the first page to be managed.
+AllocInit   MAC
+	    LDA AllocStart
+	    STA AllocPointer
+	    LDA AllocStart+1
+	    STA AllocPointer+1
 
-		LDX AllocCount		; X will count down to zero
+	    * X will count down to zero
+	    LDX ]1
 
 ]Loop		
-		* Block 1
-		_AllocSetField AllocPointer;_ALLOC_SIZE;#0 ; Set size to 0.
-		_AllocSetField AllocPointer;_ALLOC_LINK;#1 ; Link to the next word.
+	    * Block 1
+	    _AllocSetField AllocPointer;_ALLOC_SIZE;#0 ; Set size to 0.
+	    _AllocSetField AllocPointer;_ALLOC_LINK;#1 ; Link to the next word.
 
-		* Block 2
-		_AllocSetField AllocPointer;_ALLOC_SIZE+2;#$7f ; Set size to the rest of the page
-		_AllocSetField AllocPointer;_ALLOC_LINK+2;#$7f ; Link to the next page.
+	    * Block 2
+	    _AllocSetField AllocPointer;_ALLOC_SIZE+2;#$7f ; Set size to the rest of the page
+	    _AllocSetField AllocPointer;_ALLOC_LINK+2;#$7f ; Link to the next page.
 
-		DEX			; Check if we're done.
-		BEQ [LoopEnd
+	    DEX			; Check if we're done.
+	    BEQ LoopEnd
 
-		INC AllocPointer+1	; Add 1 to the MSB of the pointer.
-		JMP ]Loop
+	    INC AllocPointer+1	; Add 1 to the MSB of the pointer.
+	    JMP ]Loop
 
-[LoopEnd	
-		_AllocSetField AllocPointer;_ALLOC_LINK+2;#0 ; Set the link on the final block to 0.
+LoopEnd
+	    ; Set the link on the final block to 0.
+	    _AllocSetField AllocPointer;_ALLOC_LINK+2;#0
 
-AllocInitEnd    RTS
+	    <<<
 
 * Location of our working memory. We'll use 4 bytes starting at this address.
 AllocScratch	EQU $80
