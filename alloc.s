@@ -87,6 +87,7 @@ _AllocLink	MAC
 
 		* Add the link in A to the output pointer.
 		CLC
+		ASL A
 		ADC ]2
 		STA ]2
 		LDA #0
@@ -127,11 +128,11 @@ AllocInit	LDA AllocStart
 ]Loop		
 		* Block 1
 		_AllocSetField AllocPointer;_ALLOC_SIZE;#0 ; Set size to 0.
-		_AllocSetField AllocPointer;_ALLOC_LINK;#2 ; Link to the next word.
+		_AllocSetField AllocPointer;_ALLOC_LINK;#1 ; Link to the next word.
 
 		* Block 2
-		_AllocSetField AllocPointer;_ALLOC_SIZE+2;#$FE ; Set size to the rest of the page
-		_AllocSetField AllocPointer;_ALLOC_LINK+2;#$FE ; Link to the next page.
+		_AllocSetField AllocPointer;_ALLOC_SIZE+2;#$7f ; Set size to the rest of the page
+		_AllocSetField AllocPointer;_ALLOC_LINK+2;#$7f ; Link to the next page.
 
 		DEX			; Check if we're done.
 		BEQ [LoopEnd
@@ -148,9 +149,10 @@ AllocInitEnd    RTS
 AllocScratch	EQU $80
 
 * Alloc reserves a portion of memory. A pointer to the start of reserved
-* segment will be stored at the address of AllocPointer. The caller should put
-* the requested number bytes in the Accumulator before jumping.
-
+* segment will be stored at the address of AllocPointer. The caller should set
+* the accumulator to the number of words (2 bytes--not bytes).
+*
+* The most memory that can be allocated is 127 words (254 bytes).
 Alloc		
 		* Use Knuth's names for a few memory locations.
 :Q		EQU AllocScratch
@@ -182,7 +184,7 @@ Alloc
 
 [Reserve
 		* Find K = SIZE(P) - N
-		CLC
+		SEC
 		SBC :N
 		STA :K
 
@@ -204,9 +206,10 @@ Alloc
 		CLC
 		ADC (:P),Y
 		_AllocSetFieldA :Q;_ALLOC_LINK
+		LDA :K
 
 [SetPointer
-		LDA :K
+		ASL
 		CLC
 		ADC :P
 		STA :P
@@ -217,7 +220,8 @@ Alloc
 		_PopWord AllocScratch+2	; Reset our scratch space
 		_PopWord AllocScratch
 
-		CMP #$1		; Clear ZF
+		LDA #1
+		CMP #0		; Clear ZF
 
 		RTS
 

@@ -1,59 +1,66 @@
 	ORG $2000
 
-Fill	MAC
-	LDY ]2
-	LDA ]3
-]Loop	STA (]1),Y
-	DEY
-	BNE ]Loop
-	<<<
-
 AllocateAndFill	MAC
 		LDA ]1
 		JSR Alloc
-		BEQ End
+		BEQ ]3
 
+		LDA ]1
+		ASL
+		TAY
 		LDA ]2
-		LDY ]1+1
-]Loop		DEY
+]Loop		
+		DEY
 		STA (AllocPointer),Y
 		BNE ]Loop
 End		<<<
+
+COUT	EQU $FDED
+PrintLn	MAC
+	LDX #$0
+
+]Loop	    
+	INX
+
+	LDA ]1,X
+	JSR COUT
+
+	CPX ]1	
+	BEQ End	
+	JMP ]Loop
+
+	LDA #$8D
+	JSR COUT
+	<<<
 
 * Allocator Configuration
 AllocPointer	EQU $40
 AllocStart	EQU $42
 AllocCount	EQU #$20
 
-Start	    LDA #0		    ; Tell the allocator to use memory starting
-	    STA AllocStart	    ; at $6000.
+Start	    
+	    LDA #$8D		; Print a newline
+	    JSR COUT
+
+	    LDA #0		; Tell the allocator to use memory starting
+	    STA AllocStart	; at $6000.
 	    LDA #$60		    
 	    STA AllocStart+1
 
 	    JSR AllocInit
 
-	    JSR $FC58		    ; Clear the screen.
+	    AllocateAndFill #$8;#$8;[OutOfMemory
+	    AllocateAndFill #$7f;#$7f;[OutOfMemory
+	    AllocateAndFill #$50;#$50;[OutOfMemory
+	    ;AllocateAndFill #$80;#$80;[OutOfMemory
+	    JMP End
 
-	    ;AllocateAndFill #$f;#$f
-	    ;AllocateAndFill #$e;#$e
-	    ;AllocateAndFill #$d;#$d
-	    ;AllocateAndFill #$c;#$c
-	    ;AllocateAndFill #$b;#$b
-	    ;AllocateAndFill #$a;#$a
+[OutOfMemory
+	    PrintLn NOTOK
 
-	    AllocateAndFill #$fe;#$fe
-	    ;AllocateAndFill #$fe;#$fe
-	    ;AllocateAndFill #$50;#$50
-
-	    ;LDA #$f
-	    ;JSR Alloc
-	    ;LDY #0
-	    ;LDA #$AA
-	    ;STA (AllocPointer),Y
-
-	    ;Fill AllocPointer;#$f;#$aa
-
-End	    RTS
+End	    JMP $3D0	; Warm rentry vector
 
 * Load the allocator subroutines.
 	    PUT alloc
+
+NOTOK	    STR "Not OK"
