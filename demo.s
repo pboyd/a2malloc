@@ -1,3 +1,6 @@
+* This program allocates and frees some memory. After it runs look at the
+* memory, you should see 20 pages starting a $6000 that begin with: 01 00 fe fe
+
 	ORG $2000
 
 	USE lib.macs.s
@@ -86,7 +89,7 @@ Start
 	    LDA #20
 	    JSR Free
 
-End	    JMP $3D0	; Warm rentry vector
+End	    RTS
 
 * TestAlloc calls Alloc, then fills the returned pointer with the size, and
 * records the allocated memory in Blocks.
