@@ -26,34 +26,26 @@ _AllocSetField	MAC
 		<<<
 
 * _AllocLink <in>;<out>
-* Calculates the address of the next free block after <in> and writes it to
-* <out>. Sets <out> to 0 and sets Z if there is no next block.
+* Calculates the address of the next free block after <in> and adds the address
+* to <out>. Sets <out> to 0 and sets Z if there is no next block.
 _AllocLink	MAC
 		* The free block header stores the number of bytes to the next
 		* free block, not a pointer. So we need to take the address of
 		* the current block and add the size to it.
 
 		_AllocGetField ]1;_ALLOC_LINK
-		CMP #0 ; Is this needed?
 		BEQ Fail			; No next block if link is null
 
-		* Copy the input pointer to the output pointer. Taking care to
-		* preserve the free block size stored in the accumulator.
-		PHA
-		CopyWord ]1;]2
-		PLA
+		CMP #$80	    ; Check if we need to advance a
+		BEQ AddFullPage	    ; whole page.
 
-		* Add the link in A to the output pointer.
-		CMP #$80
-		BEQ AddFullPage
-
-		ASL A
-		CLC
-		ADC ]2
-		STA ]2
-		LDA #0
-		ADC ]2+1
-		STA ]2+1
+		ASL A		    ; Multiply by 2 to convert words to bytes.
+		CLC		    ; Unset carry before add
+		ADC ]2		    ; Add LSB to output
+		STA ]2		    ; Store LSB
+		LDA #0		    ; Clear A to handle the carry
+		ADC ]2+1	    ; Add the carry
+		STA ]2+1	    ; Store the carry
 		JMP Success
 
 AddFullPage
@@ -68,12 +60,11 @@ Fail
 		STA (]2),Y
 		INY
 		STA (]2),Y
-		CMP #0		; Set ZF
+		LDA #0		; Set ZF
 		JMP End
 
 Success
-		LDA #1
-		CMP #0		; Clear ZF
+		LDA #1		; Clear ZF
 End		<<<
 
 * AllocInit <PageCount>
@@ -128,12 +119,12 @@ Alloc
 ]K		EQU AllocScratch+3
 
 		PushWord AllocScratch	    ; Store the value of our scratch
-		PushWord AllocScratch+2    ; space, so we can restore it later.
+		PushWord AllocScratch+2     ; space, so we can restore it later.
 
 		STA ]N
 
-		* Q <- LOC(AVAIL)
-		CopyWord AllocStart;]Q
+		CopyWord AllocStart;]Q	    ; Q <- LOC(AVAIL)
+		CopyWord AllocStart;]P	    ; P <- LOC(AVAIL)
 
 ]Loop		
 		_AllocLink ]Q;]P	; P <- LINK(Q)
@@ -176,31 +167,28 @@ Alloc
 		LDA ]K
 
 [SetPointer
-		ASL
-		CLC
-		ADC ]P
-		STA ]P
-		LDA #0
-		ADC ]P+1
-		STA ]P+1
+		ASL	    ; Convert words to bytes
+		CLC	    ; Reset carry before add
+		ADC ]P	    ; Add LSB
+		STA ]P	    ; Store LSB
+		LDA #0	    ; Clear A before MSB add
+		ADC ]P+1    ; Add the carry to the MSB
+		STA ]P+1    ; Store the MSB
 
 		PopWord AllocScratch+2	; Reset our scratch space
 		PopWord AllocScratch
 
-		LDA #1
-		CMP #0		; Clear ZF
+		LDA #1	    ; Clear ZF
 
 		RTS
 
 [NoSpace	
-		LDA #$0
-		STA (]P),Y
-		STA (]P+1),Y
-
 		PopWord AllocScratch+2	; Reset our scratch space
 		PopWord AllocScratch
 
-		CMP #$0		; Set ZF
+		LDA #0		; Clear A and set ZF
+		STA (]P),Y	; Set output pointer to null.
+		STA (]P+1),Y
 
 AllocEnd	RTS
 
@@ -224,6 +212,7 @@ Free
 	PHA			; Save N to the stack.
 
 	CopyWord AllocStart;]Q	; Q <- LOC(AVAIL)
+	CopyWord AllocStart;]P	; Q <- LOC(AVAIL)
 
 ]Loop
 	_AllocLink ]Q;]P	; P <- LINK(Q)

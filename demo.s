@@ -14,9 +14,6 @@ Blocks		EQU $80
 BlocksLen	EQU $82
 
 Start	    
-	    LDA #$8D		; Print a newline
-	    JSR COUT
-
 	    LDA #0		; Tell the allocator to use memory starting
 	    STA AllocStart	; at $6000.
 	    LDA #$60		    
