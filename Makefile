@@ -3,12 +3,12 @@ MERLINFLAGS=-V /opt/Merlin32_v1.0/Library
 APPLECOMMANDER=ac
 MICROM8=microm8
 
-demo.dsk: demo
+demo.dsk: test
 	$(APPLECOMMANDER) -dos140 $@ && \
 	$(APPLECOMMANDER) -p $@ $< bin 0x2000 < $<
 
-demo: demo.s alloc.s
-	$(MERLIN) $(MERLINFLAGS) demo.s
+test: test.s alloc.s
+	$(MERLIN) $(MERLINFLAGS) test.s
 
 .PHONY:
 run: demo.dsk

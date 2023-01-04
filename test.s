@@ -1,5 +1,9 @@
-* This program allocates and frees some memory. After it runs look at the
-* memory, you should see 20 pages starting a $6000 that begin with: 01 00 fe fe
+*
+* This program allocates and frees some memory, then checks the effect. If it
+* works, there will be 20 pages starting at $6000 that begin with:
+*
+*    01 00 7f 7f
+*
 
 	ORG $2000
 
@@ -13,10 +17,10 @@ AllocStart	EQU $42
 Blocks		EQU $80
 BlocksLen	EQU $82
 
-Start	    
+Start
 	    LDA #0		; Tell the allocator to use memory starting
 	    STA AllocStart	; at $6000.
-	    LDA #$60		    
+	    LDA #$60
 	    STA AllocStart+1
 
 	    AllocInit #$20
@@ -86,7 +90,53 @@ Start
 	    LDA #20
 	    JSR Free
 
-End	    RTS
+	    * Now walk through the pages we used an make sure they are correct.
+
+	    JSR $FC58		    ; Clear the screen
+
+	    CopyWord AllocStart;AllocPointer
+	    LDX #20
+]CheckLoop
+	    LDY #0		    ; check that byte 0 is 1
+	    LDA (AllocPointer),Y
+	    CMP #1
+	    BNE [CheckFailed
+
+	    INY			    ; check that byte 1 is 1
+	    LDA (AllocPointer),Y
+	    BNE [CheckFailed
+
+	    INY			    ; check that byte 2 is 7f
+	    LDA (AllocPointer),Y
+	    CMP #$7f
+	    BNE [CheckFailed
+
+	    INY			    ; check that byte 3 is 7f
+	    LDA (AllocPointer),Y
+	    CMP #$7f
+	    BNE [CheckFailed
+
+	    DEX			    ; Decrement our index
+	    BEQ [CheckPassed	    ; Is it 0?
+
+	    INC AllocPointer+1	    ; Advance the MSB of the pointer.
+	    JMP ]CheckLoop
+
+[CheckFailed
+	    ; Print Not OK
+	    PrintLn NotOK
+	    JMP End
+
+[CheckPassed
+	    ; Print OK
+	    PrintLn OK
+
+End
+	    JMP $3D0	; Use the "warm rentry vector" because we printed
+			; something.
+
+OK	    STR "OK"
+NotOK	    STR "Not OK"
 
 * TestAlloc calls Alloc, then fills the returned pointer with the size, and
 * records the allocated memory in Blocks.
